@@ -1,0 +1,75 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: mongodb
+    volumes:
+      - data:/data/db
+    #environment:
+      #-  MONGO_INITB_ROOT_USERNAME: max
+      #- MONGO_INITB_ROOT_USERNAME=max
+      #- MONGO_INITB_ROOT_PASSWORD=root 
+    env_file: #networks: #this is optional
+      #- goals-net
+      - ./env/mongod.env
+    networks: 
+      - goals-net
+   
+
+  backend:
+    #image: 'goals-backend' not work
+    build: ./backend
+    container_name: goals-backend
+    #build:
+      #context: ./backend
+      #dockerfile: Dockerfile-multi #this work when you have different name 
+    ports:
+      - "80:80"
+    
+    volumes:
+      - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./env/backend.env
+    networks:
+     - goals-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f  http://localhost:80/ || exit 1" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      - mongodb
+    
+
+  frontend:
+    build: ./frontend
+    container_name: goals-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/src/src
+
+    # stdin_open: true
+    # tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f  http://localhost:3000/ || exit 1" ]
+      interval: 10s 
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+    depends_on:
+      - backend
+    networks:
+      - goals-net
+
+volumes:
+  data:
+  logs:
+    
+networks:
+  goals-net:
